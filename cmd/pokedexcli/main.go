@@ -1,7 +1,12 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/Quorum-Code/bd-pokedex/internal/cli"
+)
 
 func main() {
-	fmt.Println("Hello world")
+	fmt.Println("Starting")
+	cli.Run()
 }
