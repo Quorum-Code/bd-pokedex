@@ -41,7 +41,7 @@ func Run() {
 
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
-		fmt.Print("pokedex > ")
+		fmt.Print("Pokedex > ")
 		scanner.Scan()
 		text := scanner.Text()
 		text = strings.ToLower(text)
@@ -60,7 +60,7 @@ func Run() {
 }
 
 func newCfg() *clicfg {
-	url := "https://pokeapi.co/api/v2/location/?id=0"
+	url := "https://pokeapi.co/api/v2/location/?offset=0&limit=20"
 
 	return &clicfg{
 		NewCache(time.Second * 3),
@@ -93,6 +93,11 @@ func buildCommands() map[string]cliCommand {
 			description: "Displays 20 map locations.",
 			callback:    commandMapB,
 		},
+		"entries": {
+			name:        "entries",
+			description: "Displays urls of all cached entries",
+			callback:    commandEntries,
+		},
 	}
 }
 
@@ -111,6 +116,14 @@ func commandExit(cfg *clicfg) error {
 	return errors.New("exit command")
 }
 
+func commandEntries(cfg *clicfg) error {
+	for e := range cfg.cache.entries {
+		fmt.Println(e)
+	}
+
+	return nil
+}
+
 func commandMap(cfg *clicfg) error {
 	return subCommandMap(cfg, cfg.mapNext)
 }
@@ -124,17 +137,21 @@ func subCommandMap(cfg *clicfg, url *string) error {
 		url = cfg.mapLast
 	}
 
-	resp, err := http.Get(*url)
+	body, err := cfg.cache.Get(*url)
 	if err != nil {
-		return err
-	}
-	body, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
-	if resp.StatusCode > 299 {
-		return errors.New("response failed")
-	}
-	if err != nil {
-		return err
+		resp, err := http.Get(*url)
+		if err != nil {
+			return err
+		}
+		body, err = io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode > 299 {
+			return errors.New("response failed")
+		}
+		if err != nil {
+			return err
+		}
+		defer cfg.cache.Add(*url, body)
 	}
 
 	respData := responseData{}
