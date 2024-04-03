@@ -316,10 +316,12 @@ func commandCatch(cfg *config.Clicfg, args []string) error {
 	val := rand.Float64()
 
 	if val >= 25.0/float64(respData.BaseExperience) {
-		fmt.Printf("Caught %s!\n", args[0])
+		fmt.Printf("%s was caught!\n", args[0])
 	} else {
 		fmt.Printf("%s escaped!\n", args[0])
 	}
+
+	cfg.AddPokemon(args[0])
 
 	return nil
 }

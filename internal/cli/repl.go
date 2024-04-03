@@ -56,11 +56,12 @@ func newCfg() *config.Clicfg {
 	url := "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20"
 
 	return &config.Clicfg{
-		Cache:    config.NewCache(time.Second * 3),
-		Commands: buildCommands(),
-		MapLast:  &url,
-		MapNext:  nil,
-		MapPrev:  nil,
+		Cache:         config.NewCache(time.Second * 3),
+		Commands:      buildCommands(),
+		CaughtPokemon: []string{},
+		MapLast:       &url,
+		MapNext:       nil,
+		MapPrev:       nil,
 	}
 }
 
@@ -105,6 +106,11 @@ func buildCommands() map[string]config.CliCommand {
 			Name:        "inspect",
 			Description: "Reveals information about a pokemon",
 			Callback:    commandInspect,
+		},
+		"pokedex": {
+			Name:        "pokedex",
+			Description: "Lists the pokemon the user has caught",
+			Callback:    commandPokedex,
 		},
 	}
 }
