@@ -15,7 +15,7 @@ import (
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*clicfg) error
+	callback    func(*clicfg, []string) error
 }
 
 type clicfg struct {
@@ -43,24 +43,29 @@ func Run() {
 	for {
 		fmt.Print("Pokedex > ")
 		scanner.Scan()
-		text := scanner.Text()
-		text = strings.ToLower(text)
+		args := strings.Split(scanner.Text(), " ")
+		cmd := strings.ToLower(args[0])
 
-		cmd, ok := cfg.commands[text]
+		cmdCallback, ok := cfg.commands[cmd]
 		if !ok {
 			fmt.Println("invalid command")
 		} else {
-			err := cmd.callback(cfg)
-			if err != nil {
-				fmt.Println(err)
+			err := cmdCallback.callback(cfg, args[1:])
+			if err == nil {
+				continue
+			}
+			if err.Error() == "exit command" {
+				fmt.Println("exiting program...")
 				return
+			} else {
+				fmt.Println(err)
 			}
 		}
 	}
 }
 
 func newCfg() *clicfg {
-	url := "https://pokeapi.co/api/v2/location/?offset=0&limit=20"
+	url := "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20"
 
 	return &clicfg{
 		NewCache(time.Second * 3),
@@ -98,10 +103,20 @@ func buildCommands() map[string]cliCommand {
 			description: "Displays urls of all cached entries",
 			callback:    commandEntries,
 		},
+		"explore": {
+			name:        "explore",
+			description: "Displays Pokemon available in the area",
+			callback:    commandExplore,
+		},
+		"catch": {
+			name:        "catch",
+			description: "Attempts to catch a pokemon",
+			callback:    commandCatch,
+		},
 	}
 }
 
-func commandHelp(cfg *clicfg) error {
+func commandHelp(cfg *clicfg, args []string) error {
 	fmt.Print("Usage:\n\n")
 
 	for key := range cfg.commands {
@@ -112,11 +127,11 @@ func commandHelp(cfg *clicfg) error {
 	return nil
 }
 
-func commandExit(cfg *clicfg) error {
+func commandExit(cfg *clicfg, args []string) error {
 	return errors.New("exit command")
 }
 
-func commandEntries(cfg *clicfg) error {
+func commandEntries(cfg *clicfg, args []string) error {
 	for e := range cfg.cache.entries {
 		fmt.Println(e)
 	}
@@ -124,11 +139,11 @@ func commandEntries(cfg *clicfg) error {
 	return nil
 }
 
-func commandMap(cfg *clicfg) error {
+func commandMap(cfg *clicfg, args []string) error {
 	return subCommandMap(cfg, cfg.mapNext)
 }
 
-func commandMapB(cfg *clicfg) error {
+func commandMapB(cfg *clicfg, args []string) error {
 	return subCommandMap(cfg, cfg.mapPrev)
 }
 
