@@ -10,21 +10,9 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/Quorum-Code/bd-pokedex/internal/cli/config"
 )
-
-type cliCommand struct {
-	name        string
-	description string
-	callback    func(*clicfg, []string) error
-}
-
-type clicfg struct {
-	cache    Cache
-	commands map[string]cliCommand
-	mapLast  *string
-	mapNext  *string
-	mapPrev  *string
-}
 
 type responseData struct {
 	Count    int     `json:"count"`
@@ -46,11 +34,11 @@ func Run() {
 		args := strings.Split(scanner.Text(), " ")
 		cmd := strings.ToLower(args[0])
 
-		cmdCallback, ok := cfg.commands[cmd]
+		cmdCallback, ok := cfg.Commands[cmd]
 		if !ok {
 			fmt.Println("invalid command")
 		} else {
-			err := cmdCallback.callback(cfg, args[1:])
+			err := cmdCallback.Callback(cfg, args[1:])
 			if err == nil {
 				continue
 			}
@@ -64,95 +52,100 @@ func Run() {
 	}
 }
 
-func newCfg() *clicfg {
+func newCfg() *config.Clicfg {
 	url := "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20"
 
-	return &clicfg{
-		NewCache(time.Second * 3),
-		buildCommands(),
-		&url,
-		nil,
-		nil,
+	return &config.Clicfg{
+		Cache:    config.NewCache(time.Second * 3),
+		Commands: buildCommands(),
+		MapLast:  &url,
+		MapNext:  nil,
+		MapPrev:  nil,
 	}
 }
 
-func buildCommands() map[string]cliCommand {
-	return map[string]cliCommand{
+func buildCommands() map[string]config.CliCommand {
+	return map[string]config.CliCommand{
 		"help": {
-			name:        "help",
-			description: "Displays a help message",
-			callback:    commandHelp,
+			Name:        "help",
+			Description: "Displays a help message",
+			Callback:    commandHelp,
 		},
 		"exit": {
-			name:        "exit",
-			description: "Exit the Pokedex",
-			callback:    commandExit,
+			Name:        "exit",
+			Description: "Exit the Pokedex",
+			Callback:    commandExit,
 		},
 		"map": {
-			name:        "map",
-			description: "Displays 20 map locations.",
-			callback:    commandMap,
+			Name:        "map",
+			Description: "Displays 20 map locations.",
+			Callback:    commandMap,
 		},
 		"mapb": {
-			name:        "mapb",
-			description: "Displays 20 map locations.",
-			callback:    commandMapB,
+			Name:        "mapb",
+			Description: "Displays 20 map locations.",
+			Callback:    commandMapB,
 		},
 		"entries": {
-			name:        "entries",
-			description: "Displays urls of all cached entries",
-			callback:    commandEntries,
+			Name:        "entries",
+			Description: "Displays urls of all cached entries",
+			Callback:    commandEntries,
 		},
 		"explore": {
-			name:        "explore",
-			description: "Displays Pokemon available in the area",
-			callback:    commandExplore,
+			Name:        "explore",
+			Description: "Displays Pokemon available in the area",
+			Callback:    commandExplore,
 		},
 		"catch": {
-			name:        "catch",
-			description: "Attempts to catch a pokemon",
-			callback:    commandCatch,
+			Name:        "catch",
+			Description: "Attempts to catch a pokemon",
+			Callback:    commandCatch,
+		},
+		"inspect": {
+			Name:        "inspect",
+			Description: "Reveals information about a pokemon",
+			Callback:    commandInspect,
 		},
 	}
 }
 
-func commandHelp(cfg *clicfg, args []string) error {
+func commandHelp(cfg *config.Clicfg, args []string) error {
 	fmt.Print("Usage:\n\n")
 
-	for key := range cfg.commands {
-		fmt.Printf("%s: %s\n", cfg.commands[key].name, cfg.commands[key].description)
+	for key := range cfg.Commands {
+		fmt.Printf("%s: %s\n", cfg.Commands[key].Name, cfg.Commands[key].Description)
 	}
 	fmt.Println()
 
 	return nil
 }
 
-func commandExit(cfg *clicfg, args []string) error {
+func commandExit(cfg *config.Clicfg, args []string) error {
 	return errors.New("exit command")
 }
 
-func commandEntries(cfg *clicfg, args []string) error {
-	for e := range cfg.cache.entries {
+func commandEntries(cfg *config.Clicfg, args []string) error {
+	for e := range cfg.Cache.Entries {
 		fmt.Println(e)
 	}
 
 	return nil
 }
 
-func commandMap(cfg *clicfg, args []string) error {
-	return subCommandMap(cfg, cfg.mapNext)
+func commandMap(cfg *config.Clicfg, args []string) error {
+	return subCommandMap(cfg, cfg.MapNext)
 }
 
-func commandMapB(cfg *clicfg, args []string) error {
-	return subCommandMap(cfg, cfg.mapPrev)
+func commandMapB(cfg *config.Clicfg, args []string) error {
+	return subCommandMap(cfg, cfg.MapPrev)
 }
 
-func subCommandMap(cfg *clicfg, url *string) error {
+func subCommandMap(cfg *config.Clicfg, url *string) error {
 	if url == nil {
-		url = cfg.mapLast
+		url = cfg.MapLast
 	}
 
-	body, err := cfg.cache.Get(*url)
+	body, err := cfg.Cache.Get(*url)
 	if err != nil {
 		resp, err := http.Get(*url)
 		if err != nil {
@@ -166,7 +159,7 @@ func subCommandMap(cfg *clicfg, url *string) error {
 		if err != nil {
 			return err
 		}
-		defer cfg.cache.Add(*url, body)
+		defer cfg.Cache.Add(*url, body)
 	}
 
 	respData := responseData{}
@@ -175,9 +168,9 @@ func subCommandMap(cfg *clicfg, url *string) error {
 		return err
 	}
 
-	cfg.mapLast = url
-	cfg.mapNext = respData.Next
-	cfg.mapPrev = respData.Previous
+	cfg.MapLast = url
+	cfg.MapNext = respData.Next
+	cfg.MapPrev = respData.Previous
 
 	for i := range respData.Results {
 		fmt.Printf("%s\n", respData.Results[i].Name)

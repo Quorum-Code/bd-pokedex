@@ -7,6 +7,8 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+
+	"github.com/Quorum-Code/bd-pokedex/internal/cli/config"
 )
 
 type pokemonData struct {
@@ -281,13 +283,13 @@ type pokemonData struct {
 	} `json:"past_types,omitempty"`
 }
 
-func commandCatch(cfg *clicfg, args []string) error {
+func commandCatch(cfg *config.Clicfg, args []string) error {
 	if len(args) <= 0 {
 		return errors.New("no pokemon argument given")
 	}
 	url := "https://pokeapi.co/api/v2/pokemon/" + args[0]
 
-	body, err := cfg.cache.Get(url)
+	body, err := cfg.Cache.Get(url)
 	if err != nil {
 		resp, err := http.Get(url)
 		if err != nil {
@@ -302,7 +304,7 @@ func commandCatch(cfg *clicfg, args []string) error {
 		if err != nil {
 			return nil
 		}
-		defer cfg.cache.Add(url, body)
+		defer cfg.Cache.Add(url, body)
 	}
 
 	respData := pokemonData{}

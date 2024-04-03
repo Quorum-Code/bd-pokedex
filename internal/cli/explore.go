@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/Quorum-Code/bd-pokedex/internal/cli/config"
 )
 
 type exploreData struct {
@@ -61,13 +63,13 @@ type exploreData struct {
 	} `json:"pokemon_encounters"`
 }
 
-func commandExplore(cfg *clicfg, args []string) error {
+func commandExplore(cfg *config.Clicfg, args []string) error {
 	if len(args) <= 0 {
 		return errors.New("no location argument given")
 	}
 	url := "https://pokeapi.co/api/v2/location-area/" + args[0]
 
-	body, err := cfg.cache.Get(url)
+	body, err := cfg.Cache.Get(url)
 	if err != nil {
 		resp, err := http.Get(url)
 		if err != nil {
@@ -82,7 +84,7 @@ func commandExplore(cfg *clicfg, args []string) error {
 		if err != nil {
 			return nil
 		}
-		defer cfg.cache.Add(url, body)
+		defer cfg.Cache.Add(url, body)
 	}
 
 	respData := exploreData{}
